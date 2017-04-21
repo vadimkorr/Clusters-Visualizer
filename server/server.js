@@ -25,7 +25,7 @@ http.createServer(function(req, res) {
 		var isDir = false;
 		if (fs.statSync(fileName).isDirectory()) {
 			isDir = true;
-			fileName += '/index.html';
+			fileName += '/src/index.html';
 		}
 		
 		fs.readFile(fileName, "binary", function(err, file) {
