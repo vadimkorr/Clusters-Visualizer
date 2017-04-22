@@ -4,3 +4,45 @@ html, body, #map {
   margin: 0;
   padding: 0;
 }
+
+.leaflet-popup {
+	width: 300px;
+}
+
+.leaflet-popup-content-wrapper .leaflet-popup-tip {
+	background-color: white;
+}
+
+.leaflet-control-layers-overlays > label {
+	height: 30px;
+}
+
+.leaflet-control-layers-overlays > label > div {
+	position: relative;
+    top: 50%;
+    transform: perspective(1px) translateY(-50%);
+}
+
+.cluster-label {
+	font-size: 14px;
+    margin-right: 12px;
+    font-weight: bold;
+    color: white;
+}
+
+table.item-data-table {
+	table-layout: fixed;
+	width: 100%;
+	font-family: monospace;
+	font-size: 14px;
+}
+
+table.item-data-table tr > td.caption-col {
+	width: 70px;
+	font-weight: bold;
+	text-transform: capitalize;
+}
+
+table.item-data-table tr > td.content-col {
+	width: 100%;
+}
