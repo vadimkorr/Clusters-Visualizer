@@ -10,7 +10,6 @@ http.createServer(function(req, res) {
 	
 	var setCommonHeaders = function(res) {
 		res.setHeader("Access-Control-Allow-Origin", "*");
-		//res.setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
 	};
 		
 	fs.exists(fileName, function(exists) {
@@ -25,7 +24,6 @@ http.createServer(function(req, res) {
 		var isDir = false;
 		if (fs.statSync(fileName).isDirectory()) {
 			isDir = true;
-			fileName += '/src/index.html';
 		}
 		
 		fs.readFile(fileName, "binary", function(err, file) {
@@ -38,14 +36,12 @@ http.createServer(function(req, res) {
 			}
 		
 			setCommonHeaders(res);
-			if (isDir) {
-				res.writeHead(200, {"Content-type": "text/html;charset=utf-8"});
-				res.write(file);	
-			} else {
+			if (!isDir) {
 				res.writeHead(200, {"Content-type": "text/plain;charset=utf-8"});
-				res.write(file, "binary");	
+				res.write(file, "binary");
+				res.end();
+				return;
 			}
-			res.end();
 		});
 	});
 }).listen(parseInt(port, 10));

@@ -1,13 +1,51 @@
 window.onload = function() {
+	var URL = "http://localhost:8081/";
+
+	var layerGroupOfClusters = new L.LayerGroup();
 	var mapbox = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={access_token}', {
 		maxZoom: 18,
 		id: 'mapbox.streets',
 		access_token: 'pk.eyJ1Ijoia2FuZ2Fyb29vIiwiYSI6ImNqMXNkbWl5NjAwMWUzMnJ6eDdqbWV1dnAifQ.yHRhnXJ0ek-a6DrU5-GjEQ'
 	});
+
+	var filesList;
+	var layerControl;
+	function populateFilesListDropdown() {
+		var file = URL + "file-names-list.txt";
+		var dropdownList = $("#file-names-list-dropdown");
+		$.get(file, function(data) {
+			filesList = data.split("\n");
+			for (var i=0, len = filesList.length; i < len; i++) {
+				var fileName = filesList[i];
+				dropdownList.append("<option value='" + fileName + "'>" + fileName + "</option>");
+			}   
+		})
+		.done(function() {
+			Utils.getData(filesList[0], function(data) {
+				map.addLayer(layerGroupOfClusters);
+				var baseLayers = {
+					//"Map": mapbox
+				};
+				layerControl = L.control.layers(baseLayers).addTo(map);
+				processData(data);
+			});
+		});
+	}
+	populateFilesListDropdown();
+	
+	$("#file-names-list-dropdown").change(function(data) {
+		Utils.getData($(this).val(), function(data) {
+			layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
+			layerControl.removeLayer(layerGroupOfClusters);//remove controls
+			Overlays.removeOverlaysFromControl(layerControl);//
+			Overlays.removeAllKeys();
+			processData(data);
+		});
+	});
 	
 	var map = L.map('map', {
-		center: [36.98, -120.12],
-		zoom: 3,
+		center: [40.0, 0.5],
+		zoom: 5,
 		layers: [mapbox]
 	});
 
@@ -30,9 +68,9 @@ window.onload = function() {
 		sortObjectByKey: function(obj) {
 			return Object.keys(obj).sort().reduce((r, k) => (r[k] = obj[k], r), {});
 		},
-		getData: function(onSuccess) {
+		getData: function(fileName, onSuccess) {
 			$.ajax({
-				url: "http://localhost:8081/data.csv",
+				url: URL + fileName,
 				async: false,
 				success: function (csvd) {
 					console.log("Start processing!");
@@ -54,7 +92,8 @@ window.onload = function() {
 				"radius": arr[2],
 				"clusterId": arr[arr.length - 1],
 				"wktType": wkt.type,
-				"wktComps": wkt.components
+				"wktComps": wkt.components,
+				"payload": arr[arr.length - 2]
 			}
 		},
 		setLabelsColor: function(overlays) {
@@ -83,6 +122,24 @@ window.onload = function() {
 		overlays: {},
 		getOverlay: function(key) {
 			return this.overlays[key];
+		},
+		removeAllKeys: function() {
+			var self = this;
+			Object.keys(this.overlays).forEach(function(key) {
+				delete self.overlays[key];
+			});
+		},
+		addOverlaysToControl: function(ctrl) {
+			var self = this;
+			Object.keys(this.overlays).forEach(function(key) {
+				ctrl.addOverlay(self.getOverlay(key), key);
+			});
+		},
+		removeOverlaysFromControl: function(ctrl) {
+			var self = this;
+			Object.keys(this.overlays).forEach(function(key) {
+				ctrl.removeLayer(self.getOverlay(key));
+			});
 		}
 	};
 	
@@ -105,15 +162,15 @@ window.onload = function() {
 		content += "</table>";
 		return content;
 	}
-	
+
 	var processData = function(data) {
-		data.forEach(function(item){
+		data.forEach(function(item) {
 			var row = Utils.parseRow(item);
 			var overlay = Overlays.getOverlay(Utils.getClusterName(row.clusterId));
 			if (!overlay) {
 				overlay = Overlays.overlays[Utils.getClusterName(row.clusterId)] = new L.LayerGroup();
 			}
-			map.addLayer(overlay);//add to map directly to enable it right away
+			layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
 			switch(row.wktType) {
 				case "point":		
 					L.circle([row.wktComps[0].x, row.wktComps[0].y], {
@@ -125,7 +182,7 @@ window.onload = function() {
 					.addTo(overlay)
 					.bindPopup(
 						getPopupContent(
-							Utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, "")
+							Utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload)
 						)
 					);
 					break;
@@ -151,14 +208,7 @@ window.onload = function() {
 			}
 		});
 		Overlays.overlays = Utils.sortObjectByKey(Overlays.overlays);
-		var baseLayers = {
-			//"Map": mapbox
-		};
-		L.control.layers(baseLayers, Overlays.overlays).addTo(map);
+		Overlays.addOverlaysToControl(layerControl);
 		Utils.setLabelsColor(Overlays.overlays);
 	}
-	
-	Utils.getData(function(data) {
-		processData(data);
-	});
 }

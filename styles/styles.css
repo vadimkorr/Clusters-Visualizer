@@ -5,6 +5,12 @@ html, body, #map {
   padding: 0;
 }
 
+#file-names-list-dropdown {
+	z-index: 500;
+	position: absolute;
+	margin-left: 50px;
+}
+
 .leaflet-popup {
 	width: 300px;
 }

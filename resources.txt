@@ -1,2 +1,0 @@
-Practical D3.js, Tarek Amr, Rayna Stamboliyska, from chapter 5
-https://bl.ocks.org/mbostock/899711
