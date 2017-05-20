@@ -1,0 +1,34 @@
+{
+  "name": "clusters-visualizer",
+  "version": "1.0.0",
+  "description": "Tool visualizes spatial temporal clusters from dataset consisting of wkt- points and lines with uncertain parameters",
+  "main": "scripts/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vadimkorr/Clusters-Visualizer.git"
+  },
+  "keywords": [
+    "map",
+    "clusters",
+    "visualizer",
+    "latitude",
+    "longitude",
+    "spatial",
+    "temporal"
+  ],
+  "author": "Vadim Korobeinikov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/vadimkorr/Clusters-Visualizer/issues"
+  },
+  "homepage": "https://github.com/vadimkorr/Clusters-Visualizer#readme",
+  "dependencies": {
+    "jquery": "^3.2.1",
+    "jquery-csv": "^0.8.3",
+    "leaflet": "^1.0.3",
+    "wicket": "^1.3.2"
+  }
+}
