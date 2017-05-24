@@ -8,6 +8,11 @@ window.onload = function() {
 		access_token: 'pk.eyJ1Ijoia2FuZ2Fyb29vIiwiYSI6ImNqMXNkbWl5NjAwMWUzMnJ6eDdqbWV1dnAifQ.yHRhnXJ0ek-a6DrU5-GjEQ'
 	});
 
+	function isAnalyzedClusterFile(fullPath) {
+		var fileName = fullPath.replace(/^.*[\\\/]/, '');
+		return fileName.startsWith("analyzed-");
+	}
+	
 	var filesList;
 	var layerControl;
 	function populateFilesListDropdown() {
@@ -34,12 +39,18 @@ window.onload = function() {
 	populateFilesListDropdown();
 	
 	$("#file-names-list-dropdown").change(function(data) {
-		Utils.getData($(this).val(), function(data) {
+		var file = $(this).val();
+		Utils.getData(file, function(data) {
 			layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
 			layerControl.removeLayer(layerGroupOfClusters);//remove controls
 			Overlays.removeOverlaysFromControl(layerControl);//
 			Overlays.removeAllKeys();
-			processData(data);
+			
+			if (isAnalyzedClusterFile(file)) {
+				processAnalyzedData(data);
+			} else {
+				processData(data);
+			}
 		});
 	});
 	
@@ -96,6 +107,23 @@ window.onload = function() {
 				"payload": arr[arr.length - 2]
 			}
 		},
+		parseAnalyzedRow: function(row) {
+			var arr = row.toString().split(";");
+			var wkt = new Wkt.Wkt();
+			wkt.read(arr[8]);
+			return {
+				"clusterId": arr[0],
+				"size": arr[1],
+				"minTimeIntervalStart": arr[2],
+				"minTimeIntervalEnd": 	arr[3],
+				"maxTimeIntervalStart": arr[4],
+				"maxTimeIntervalEnd": 	arr[5],
+				"timeStart": arr[6],
+				"timeEnd": arr[7],
+				"wktType": wkt.type,
+				"wktComps": wkt.components
+			}
+		},
 		setLabelsColor: function(overlays) {
 			var self = this;
 			Object.keys(overlays).forEach(function(key) {
@@ -117,7 +145,7 @@ window.onload = function() {
 			};
 		}
 	};
-	
+		
 	var Overlays = {
 		overlays: {},
 		getOverlay: function(key) {
@@ -163,6 +191,32 @@ window.onload = function() {
 		return content;
 	}
 
+	var getPopupContentForAnalyzed = function(contenObj) {
+		var content = "<table class=\"item-data-table\">"; 
+		
+		content += appendData("clusterId", contenObj.clusterId);
+		content += appendData("events", contenObj.size);
+		content += appendData("min time interval", getDate(contenObj.minTimeIntervalStart) + " - " + getDate(contenObj.minTimeIntervalEnd));
+		content += appendData("max time interval", getDate(contenObj.maxTimeIntervalStart) + " - " + getDate(contenObj.maxTimeIntervalEnd));
+		content += appendData("time interval", getDate(contenObj.timeStart) + " - " + getDate(contenObj.timeEnd));
+		
+		content += "</table>";
+		return content;
+	}
+	
+	var appendData = function(caption, data) {
+		var content = "";
+		content += "<tr>";
+		content += "<td class=\"caption-col\">" + caption + "</td>";
+		content += "<td class=\"content-col\">" + data + "</td>";
+		content += "</tr>";
+		return content;
+	}
+
+	var getDate = function(str) {
+		return (new Date(parseFloat(str, 10))).toGMTString();
+	}
+	
 	var processData = function(data) {
 		data.forEach(function(item) {
 			var row = Utils.parseRow(item);
@@ -201,6 +255,69 @@ window.onload = function() {
 						getPopupContent(
 							Utils.getItemDataObj(row.id, coordsArr[0].lat, coordsArr[0].lng, row.radius, "", row.clusterId, "")
 						)
+					);
+					break;
+				default:
+					break;
+			}
+		});
+		Overlays.overlays = Utils.sortObjectByKey(Overlays.overlays);
+		Overlays.addOverlaysToControl(layerControl);
+		Utils.setLabelsColor(Overlays.overlays);
+	}
+	
+	var processAnalyzedData = function(data) {
+		data.forEach(function(item) {
+			var row = Utils.parseAnalyzedRow(item);
+			var overlay = Overlays.getOverlay(Utils.getClusterName(row.clusterId));
+			if (!overlay) {
+				overlay = Overlays.overlays[Utils.getClusterName(row.clusterId)] = new L.LayerGroup();
+			}
+			layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
+			switch(row.wktType) {
+				case "point":		
+					L.circle([row.wktComps[0].x, row.wktComps[0].y], {
+						color: Utils.getColorHex(row.clusterId),
+						fillColor: Utils.getColorHex(row.clusterId),
+						fillOpacity: 0.5,
+						radius: row.radius
+					})
+					.addTo(overlay)
+					.bindPopup(
+						getPopupContent(
+							Utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload)
+						)
+					);
+					break;
+				case "linestring":
+					var coordsArr = [];
+					row.wktComps.forEach((coords) => {
+						coordsArr.push(new L.LatLng(coords.x, coords.y));
+					});
+					L.corridor(coordsArr, {
+						color: Utils.getColorHex(row.clusterId),
+						corridor: row.radius,
+						opacity: 0.5
+					})
+					.addTo(overlay)
+					.bindPopup(
+						getPopupContent(
+							Utils.getItemDataObj(row.id, coordsArr[0].lat, coordsArr[0].lng, row.radius, "", row.clusterId, "")
+						)
+					);
+					break;
+				case "polygon":
+					var coordsArr = [];
+					row.wktComps[0].forEach((coords) => {
+						coordsArr.push([coords.x, coords.y]);
+					});
+					L.polygon(coordsArr, {
+						color: Utils.getColorHex(row.clusterId),
+						opacity: 0.5
+					})
+					.addTo(overlay)
+					.bindPopup(
+						getPopupContentForAnalyzed(row)
 					);
 					break;
 				default:

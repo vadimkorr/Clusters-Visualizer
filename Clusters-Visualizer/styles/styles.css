@@ -15,6 +15,13 @@ html, body, #map {
 	width: 300px;
 }
 
+.wide-popup {
+	width: 650px;
+}
+.wide-table {
+	width: 140px;
+}
+
 .leaflet-popup-content-wrapper .leaflet-popup-tip {
 	background-color: white;
 }
