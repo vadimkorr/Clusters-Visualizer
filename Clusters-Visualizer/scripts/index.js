@@ -1,331 +1,182 @@
 window.onload = function() {
-	var URL = "http://localhost:8081/";
 
-	var layerGroupOfClusters = new L.LayerGroup();
-	var mapbox = L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={access_token}', {
-		maxZoom: 18,
-		id: 'mapbox.streets',
-		access_token: 'pk.eyJ1Ijoia2FuZ2Fyb29vIiwiYSI6ImNqMXNkbWl5NjAwMWUzMnJ6eDdqbWV1dnAifQ.yHRhnXJ0ek-a6DrU5-GjEQ'
-	});
+require([
+		"scripts/dataProcessor", 
+		"scripts/colorService", 
+		"scripts/utils",
+		"scripts/parserService",
+		"scripts/popupService",
+		"scripts/consts"
+	], 
+	function(dataProcessor, colorService, utils, parserService, popupService, consts) {
 
-	function isAnalyzedClusterFile(fullPath) {
-		var fileName = fullPath.replace(/^.*[\\\/]/, '');
-		return fileName.startsWith("analyzed-");
-	}
-	
-	var filesList;
-	var layerControl;
-	function populateFilesListDropdown() {
-		var file = URL + "file-names-list.txt";
-		var dropdownList = $("#file-names-list-dropdown");
-		$.get(file, function(data) {
-			filesList = data.split("\n");
-			for (var i=0, len = filesList.length; i < len; i++) {
-				var fileName = filesList[i];
-				dropdownList.append("<option value='" + fileName + "'>" + fileName + "</option>");
-			}   
-		})
-		.done(function() {
-			Utils.getData(filesList[0], function(data) {
-				map.addLayer(layerGroupOfClusters);
-				var baseLayers = {
-					//"Map": mapbox
-				};
-				layerControl = L.control.layers(baseLayers).addTo(map);
-				processData(data);
-			});
+		dataProcessor.setL(L);
+
+		var layerGroupOfClusters = new L.LayerGroup();
+		var mapbox = L.tileLayer(consts.LEAFLET_TILE_LAYER, {
+			maxZoom: 18,
+			id: 'mapbox.streets',
+			access_token: consts.LEAFLET_ACCESS_TOKEN
 		});
-	}
-	populateFilesListDropdown();
-	
-	$("#file-names-list-dropdown").change(function(data) {
-		var file = $(this).val();
-		Utils.getData(file, function(data) {
-			layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
-			layerControl.removeLayer(layerGroupOfClusters);//remove controls
-			Overlays.removeOverlaysFromControl(layerControl);//
-			Overlays.removeAllKeys();
+
+		var map = L.map('map', {
+			center: [40.0, 0.5],
+			zoom: 5,
+			layers: [mapbox]
+		});
+
+		var filesList;
+		var layerControl;
+
+		function populateFilesListDropdown() {
+			var file = consts.FILE_NAMES_LIST_PATH;
+			var dropdownList = $("#file-names-list-dropdown");
+			$.get(file, function(data) {
+				filesList = data.split("\n");
+				for (var i = 0, len = filesList.length; i < len; i++) {
+					var fileName = filesList[i];
+					dropdownList.append("<option value='" + fileName + "'>" + fileName + "</option>");
+				}   
+			})
+			.done(function() {
+				var file = filesList[0];
+				utils.getData(file, function(data) {
+					map.addLayer(layerGroupOfClusters);
+					var baseLayers = {
+						//"Map": mapbox
+					};
+					layerControl = L.control.layers(baseLayers).addTo(map);
+					processDataFromFile(file, data);
+				});
+			});
+		}
 			
-			if (isAnalyzedClusterFile(file)) {
-				processAnalyzedData(data);
-			} else {
-				processData(data);
-			}
-		});
-	});
-	
-	var map = L.map('map', {
-		center: [40.0, 0.5],
-		zoom: 5,
-		layers: [mapbox]
-	});
-
-	var Utils = {
-		//pos = "left" (paste num on the left hand side, so complete value is in the right side) / "right"
-		complete: function(template, num, pos) {
-			var completePart = template.substring(0, template.length - num.toString().length);
-			return pos == "left" ? num.toString() + completePart : completePart + num.toString(); 
-		},
-		colorTemplate: "000000",
-		getColorHex: function(num) {  
-			var step = 50000;
-			var maxColor = 16777215;//#FFFFFF
-			return '#' + this.complete(this.colorTemplate, ((num  * step) % maxColor).toString(16), "left");
-		},
-		clusterIdTemplate: "0000",
-		getClusterName: function(clusterId) {
-			return "Cluster " + this.complete(this.clusterIdTemplate, clusterId, "right");
-		},
-		sortObjectByKey: function(obj) {
-			return Object.keys(obj).sort().reduce((r, k) => (r[k] = obj[k], r), {});
-		},
-		getData: function(fileName, onSuccess) {
-			$.ajax({
-				url: URL + fileName,
-				async: false,
-				success: function (csvd) {
-					console.log("Start processing!");
-					var data = $.csv.toArrays(csvd);	
-					onSuccess(data);
-				},
-				dataType: "text",
-				complete: function () {
-					console.log("Completed!");
-				}
+		$("#file-names-list-dropdown").change(function(data) {
+			var file = $(this).val();
+			utils.getData(file, function(data) {
+				layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
+				layerControl.removeLayer(layerGroupOfClusters);//remove controls
+				Overlays.removeOverlaysFromControl(layerControl);//
+				Overlays.removeAllKeys();
+				
+				processDataFromFile(file, data);
 			});
-		},
-		parseRow: function(row) {
-			var arr = row.toString().split(";");
-			var wkt = new Wkt.Wkt();
-			wkt.read(arr[1]);
-			return {
-				"id": arr[0],
-				"radius": arr[2],
-				"clusterId": arr[arr.length - 1],
-				"wktType": wkt.type,
-				"wktComps": wkt.components,
-				"payload": arr[arr.length - 2]
-			}
-		},
-		parseAnalyzedRow: function(row) {
-			var arr = row.toString().split(";");
-			var wkt = new Wkt.Wkt();
-			wkt.read(arr[8]);
-			return {
-				"clusterId": arr[0],
-				"size": arr[1],
-				"minTimeIntervalStart": arr[2],
-				"minTimeIntervalEnd": 	arr[3],
-				"maxTimeIntervalStart": arr[4],
-				"maxTimeIntervalEnd": 	arr[5],
-				"timeStart": arr[6],
-				"timeEnd": arr[7],
-				"wktType": wkt.type,
-				"wktComps": wkt.components
-			}
-		},
-		setLabelsColor: function(overlays) {
+		});
+
+		var setLabelsColor = function(overlays) {
 			var self = this;
 			Object.keys(overlays).forEach(function(key) {
 				$("span:contains('" + key +"')")
 					.addClass("cluster-label")
 					.parent().parent()
-					.css('background', self.getColorHex(key.replace( /^\D+/g, '')));
-			});
-		},
-		getItemDataObj: function(id, lat, lng, radius, time, cluster, payload) {
-			return {
-				"id": id, 
-				"lat": lat, 
-				"lng": lng, 
-				"radius": radius, 
-				"time": time, 
-				"cluster": cluster, 
-				"payload": payload
-			};
-		}
-	};
-		
-	var Overlays = {
-		overlays: {},
-		getOverlay: function(key) {
-			return this.overlays[key];
-		},
-		removeAllKeys: function() {
-			var self = this;
-			Object.keys(this.overlays).forEach(function(key) {
-				delete self.overlays[key];
-			});
-		},
-		addOverlaysToControl: function(ctrl) {
-			var self = this;
-			Object.keys(this.overlays).forEach(function(key) {
-				ctrl.addOverlay(self.getOverlay(key), key);
-			});
-		},
-		removeOverlaysFromControl: function(ctrl) {
-			var self = this;
-			Object.keys(this.overlays).forEach(function(key) {
-				ctrl.removeLayer(self.getOverlay(key));
+					.css('background', colorService.getColorHex(key.replace( /^\D+/g, '')));
 			});
 		}
-	};
-	
-	var getPopupContent = function(contenObj) {
-		var content = "<table class=\"item-data-table\">"; 
-		Object.keys(contenObj).forEach(function(key) {
-			if (key == "lat") {
-				content += "<tr>";
-				content += "<td class=\"caption-col\">coords</td>";
-				content += "<td class=\"content-col\">[" + contenObj["lat"] + ", " + contenObj["lng"] + "]</td>";
-				content += "</tr>";
-			} else if (key == "lng") {
-			} else {	
-				content += "<tr>";
-				content += "<td class=\"caption-col\">" + key + "</td>";
-				content += "<td class=\"content-col\">" + contenObj[key] + (key == "radius" ? " m": "") + "</td>";
-				content += "</tr>";
+			
+		var Overlays = {
+			overlays: {},
+			getOverlay: function(key) {
+				return this.overlays[key];
+			},
+			removeAllKeys: function() {
+				var self = this;
+				Object.keys(this.overlays).forEach(function(key) {
+					delete self.overlays[key];
+				});
+			},
+			addOverlaysToControl: function(ctrl) {
+				var self = this;
+				Object.keys(this.overlays).forEach(function(key) {
+					ctrl.addOverlay(self.getOverlay(key), key);
+				});
+			},
+			removeOverlaysFromControl: function(ctrl) {
+				var self = this;
+				Object.keys(this.overlays).forEach(function(key) {
+					ctrl.removeLayer(self.getOverlay(key));
+				});
 			}
-		});
-		content += "</table>";
-		return content;
-	}
+		};
 
-	var getPopupContentForAnalyzed = function(contenObj) {
-		var content = "<table class=\"item-data-table\">"; 
-		
-		content += appendData("clusterId", contenObj.clusterId);
-		content += appendData("events", contenObj.size);
-		content += appendData("min time interval", getDate(contenObj.minTimeIntervalStart) + " - " + getDate(contenObj.minTimeIntervalEnd));
-		content += appendData("max time interval", getDate(contenObj.maxTimeIntervalStart) + " - " + getDate(contenObj.maxTimeIntervalEnd));
-		content += appendData("time interval", getDate(contenObj.timeStart) + " - " + getDate(contenObj.timeEnd));
-		
-		content += "</table>";
-		return content;
-	}
-	
-	var appendData = function(caption, data) {
-		var content = "";
-		content += "<tr>";
-		content += "<td class=\"caption-col\">" + caption + "</td>";
-		content += "<td class=\"content-col\">" + data + "</td>";
-		content += "</tr>";
-		return content;
-	}
 
-	var getDate = function(str) {
-		return (new Date(parseFloat(str, 10))).toGMTString();
-	}
-	
-	var processData = function(data) {
-		data.forEach(function(item) {
-			var row = Utils.parseRow(item);
-			var overlay = Overlays.getOverlay(Utils.getClusterName(row.clusterId));
-			if (!overlay) {
-				overlay = Overlays.overlays[Utils.getClusterName(row.clusterId)] = new L.LayerGroup();
+		/* ========== DATA PROCESSORS ========== */
+
+		var onPoint = function(row, overlay) {
+			dataProcessor.processPoint(
+				row.wktComps[0].x, row.wktComps[0].y, 
+				row.radius, colorService.getColorHex(row.clusterId), overlay, 
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload))
+			)
+		}
+		
+		var onLineString = function(row, overlay) {
+			dataProcessor.processPoint(
+				row.wktComps[0].x, row.wktComps[0].y, 
+				row.radius, colorService.getColorHex(row.clusterId), overlay, 
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload))
+			)
+		}
+
+		var onPointAnalyzed = function(row, overlay) {
+			dataProcessor.processPoint(
+				row.wktComps[0].x, row.wktComps[0].y, 
+				row.radius, colorService.getColorHex(row.clusterId), overlay, 
+				//need to be for analyzed
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload))
+			)
+		}
+		
+		var onLineStringAnalyzed = function(row, overlay) {
+			dataProcessor.processLineString(
+				row.wktComps, colorService.getColorHex(row.clusterId), 
+				row.radius, overlay, 
+				//need to be for analyzed
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, ""))
+			);
+		}
+
+		var onPolygonAnalyzed = function(row, overlay) {
+			dataProcessor.processPolygon(
+				row.wktComps[0], colorService.getColorHex(row.clusterId), 
+				overlay, popupService.getPopupContentForAnalyzed(row)
+			);
+		}
+
+		var processDataFromFile = function(fileName, data) {
+			if (utils.isFileNameStartsWith(fileName, "analyzed-")) {
+				processData(data, parserService.parseAnalyzedRow, onPointAnalyzed, onLineStringAnalyzed, onPolygonAnalyzed);
+			} else {
+				processData(data, parserService.parseRow, onPoint, onLineString, function(row, overlay) {});
 			}
-			layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
-			switch(row.wktType) {
-				case "point":		
-					L.circle([row.wktComps[0].x, row.wktComps[0].y], {
-						color: Utils.getColorHex(row.clusterId),
-						fillColor: Utils.getColorHex(row.clusterId),
-						fillOpacity: 0.5,
-						radius: row.radius
-					})
-					.addTo(overlay)
-					.bindPopup(
-						getPopupContent(
-							Utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload)
-						)
-					);
-					break;
-				case "linestring":
-					var coordsArr = [];
-					row.wktComps.forEach((coords) => {
-						coordsArr.push(new L.LatLng(coords.x, coords.y));
-					});
-					L.corridor(coordsArr, {
-						color: Utils.getColorHex(row.clusterId),
-						corridor: row.radius,
-						opacity: 0.5
-					})
-					.addTo(overlay)
-					.bindPopup(
-						getPopupContent(
-							Utils.getItemDataObj(row.id, coordsArr[0].lat, coordsArr[0].lng, row.radius, "", row.clusterId, "")
-						)
-					);
-					break;
-				default:
-					break;
-			}
-		});
-		Overlays.overlays = Utils.sortObjectByKey(Overlays.overlays);
-		Overlays.addOverlaysToControl(layerControl);
-		Utils.setLabelsColor(Overlays.overlays);
-	}
-	
-	var processAnalyzedData = function(data) {
-		data.forEach(function(item) {
-			var row = Utils.parseAnalyzedRow(item);
-			var overlay = Overlays.getOverlay(Utils.getClusterName(row.clusterId));
-			if (!overlay) {
-				overlay = Overlays.overlays[Utils.getClusterName(row.clusterId)] = new L.LayerGroup();
-			}
-			layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
-			switch(row.wktType) {
-				case "point":		
-					L.circle([row.wktComps[0].x, row.wktComps[0].y], {
-						color: Utils.getColorHex(row.clusterId),
-						fillColor: Utils.getColorHex(row.clusterId),
-						fillOpacity: 0.5,
-						radius: row.radius
-					})
-					.addTo(overlay)
-					.bindPopup(
-						getPopupContent(
-							Utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload)
-						)
-					);
-					break;
-				case "linestring":
-					var coordsArr = [];
-					row.wktComps.forEach((coords) => {
-						coordsArr.push(new L.LatLng(coords.x, coords.y));
-					});
-					L.corridor(coordsArr, {
-						color: Utils.getColorHex(row.clusterId),
-						corridor: row.radius,
-						opacity: 0.5
-					})
-					.addTo(overlay)
-					.bindPopup(
-						getPopupContent(
-							Utils.getItemDataObj(row.id, coordsArr[0].lat, coordsArr[0].lng, row.radius, "", row.clusterId, "")
-						)
-					);
-					break;
-				case "polygon":
-					var coordsArr = [];
-					row.wktComps[0].forEach((coords) => {
-						coordsArr.push([coords.x, coords.y]);
-					});
-					L.polygon(coordsArr, {
-						color: Utils.getColorHex(row.clusterId),
-						opacity: 0.5
-					})
-					.addTo(overlay)
-					.bindPopup(
-						getPopupContentForAnalyzed(row)
-					);
-					break;
-				default:
-					break;
-			}
-		});
-		Overlays.overlays = Utils.sortObjectByKey(Overlays.overlays);
-		Overlays.addOverlaysToControl(layerControl);
-		Utils.setLabelsColor(Overlays.overlays);
-	}
+		}
+
+		var processData = function(data, parseFunc, onPoint, onLineString, onPolygon) {
+			data.forEach(function(item) {
+				var row = parseFunc(item);
+				var overlay = Overlays.getOverlay(utils.getClusterName(row.clusterId));
+				if (!overlay) {
+					overlay = Overlays.overlays[utils.getClusterName(row.clusterId)] = new L.LayerGroup();
+				}
+				layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
+				switch(row.wktType) {
+					case "point":		
+						onPoint(row, overlay);
+						break;
+					case "linestring":
+						onLineString(row, overlay);
+						break;
+					case "polygon":
+						onPolygon(row, overlay);
+						break;
+					default:
+						break;
+				}
+			});
+			Overlays.overlays = utils.sortObjectByKey(Overlays.overlays);
+			Overlays.addOverlaysToControl(layerControl);
+			setLabelsColor(Overlays.overlays);
+		}
+
+		populateFilesListDropdown();
+	})
 }
