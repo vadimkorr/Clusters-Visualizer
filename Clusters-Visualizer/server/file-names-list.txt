@@ -1,2 +1,3 @@
 server-data/input.csv
 server-data/test-res/part-00000
+server-data/analyzed-part-00000
