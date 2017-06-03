@@ -1,4 +1,5 @@
 define(function() {
+	var opacity = 0.59
     return {
         L: undefined,
         setL: function(L) {
@@ -6,9 +7,10 @@ define(function() {
         },
         processPoint: function(x, y, radius, color, overlay, popupContent) {
             this.L.circle([x, y], {
-                color: color,
+				stroke: false,
+                //color: color, //stroke's color
                 fillColor: color,
-                fillOpacity: 0.5,
+                fillOpacity: opacity,
                 radius: radius
             })
             .addTo(overlay)
@@ -22,7 +24,7 @@ define(function() {
             this.L.corridor(coordsArr, {
                 color: color,
                 corridor: radius,
-                opacity: 0.5
+                opacity: opacity
             })
             .addTo(overlay)
             .bindPopup(popupContent);
@@ -34,7 +36,15 @@ define(function() {
             });
             this.L.polygon(coordsArr, {
                 color: color,
-                opacity: 0.5
+                opacity: opacity
+            })
+            .addTo(overlay)
+            .bindPopup(popupContent);
+        },        
+		processRectangle: function(bounds, color, overlay, popupContent) {
+            this.L.rectangle(bounds, {
+                color: color,
+                opacity: opacity
             })
             .addTo(overlay)
             .bindPopup(popupContent);

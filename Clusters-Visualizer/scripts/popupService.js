@@ -32,7 +32,16 @@ define(["scripts/utils"], function(utils) {
             
             content += "</table>";
             return content;
-        },    
+        },  
+		
+		getPopupContentForRectangle: function(contenObj) {
+            var content = "<table class=\"item-data-table\">"; 
+            content += this.appendData("Layer", contenObj.layer);
+            content += this.appendData("Top Right", contenObj.tr[0] + " " + contenObj.tr[1]);
+            content += this.appendData("Bottom Left", contenObj.bl[0] + " " + contenObj.tr[1]);
+            content += "</table>";
+            return content;
+        }, 	
         
         appendData: function(caption, data) {
             var content = "";

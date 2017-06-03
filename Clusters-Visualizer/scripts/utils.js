@@ -18,16 +18,27 @@ define(["scripts/consts"], function(consts) {
         getClusterName: function(clusterId) {
             return "Cluster " + this.completeTemplate(consts.CLUSTER_ID_TEMPLATE, clusterId, "right");
         },
-        getItemDataObj: function(id, lat, lng, radius, time, cluster, payload) {
+        getItemDataObj: function(id, lat, lng, radius, timeStart, timeEnd, cluster, payload, label) {
             return {
                 "id": id, 
                 "lat": lat, 
                 "lng": lng, 
                 "radius": radius, 
-                "time": time, 
+                "time": this.getGMTDate(timeStart) + " - " + this.getGMTDate(timeEnd), 
                 "cluster": cluster, 
-                "payload": payload
+                "payload": payload,
+                "label": label
             };
+        },
+        getRectDataObj: function(layer, tr, bl) {
+            return {
+                "layer": layer, 
+                "tr": tr, 
+                "bl": bl
+            };
+        },
+        getOverlayName: function(id) {
+            return "Overlay " + id;
         },
         getData: function(fileName, onSuccess) {
             $.ajax({
@@ -44,5 +55,21 @@ define(["scripts/consts"], function(consts) {
                 }
             });
         },
+        getFileName: function(fileName) {
+			var name = fileName.replace(/^.*[\\\/]/, '');
+			return name;
+		},
+        getFileDir: function(fileName) {
+			var path = fileName.substring(0, fileName.lastIndexOf("/") + 1);
+			return path;
+		},
+        getFileFolder: function(fileName) {
+            var folder = fileName.split('/').slice(-2)[0]; 
+			return folder;
+		},
+        getPartitionsFileName: function(fileName) {
+			var name = this.getFileDir(fileName) + "partitions_" + this.getFileName(fileName);
+			return name;
+		}
     }
 });

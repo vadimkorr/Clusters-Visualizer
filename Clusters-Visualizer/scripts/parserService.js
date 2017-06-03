@@ -7,6 +7,9 @@ define(function() {
 			return {
 				"id": arr[0],
 				"radius": arr[2],
+				"start": arr[3],
+				"end": arr[4],
+				"label": arr[5],
 				"clusterId": arr[arr.length - 1],
 				"wktType": wkt.type,
 				"wktComps": wkt.components,
@@ -29,6 +32,10 @@ define(function() {
 				"wktType": wkt.type,
 				"wktComps": wkt.components
 			}
+		},
+		parsePointsRow: function(row, separator) {
+			var arr = row.toString().split(separator).map(x => parseFloat(x));
+			return arr;
 		}
     }
 });

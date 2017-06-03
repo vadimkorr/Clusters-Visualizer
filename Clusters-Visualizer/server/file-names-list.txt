@@ -1,3 +1,5 @@
 server-data/input.csv
+server-data/input10.csv
+server-data/analyzed/part-00000
 server-data/test-res/part-00000
-server-data/analyzed-part-00000
+server-data/partitions_part-00000

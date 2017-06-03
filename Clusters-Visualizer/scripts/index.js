@@ -51,8 +51,14 @@ require([
 			});
 		}
 			
-		$("#file-names-list-dropdown").change(function(data) {
+		$("#file-names-list-dropdown").change(function(data) {		
 			var file = $(this).val();
+
+			var partitionsFile = utils.getPartitionsFileName(file);//"server-data/partitions-double_eps.csv";
+			utils.getData(partitionsFile, function(data) {	
+				processDataFromFile(partitionsFile, data);
+			});
+			
 			utils.getData(file, function(data) {
 				layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
 				layerControl.removeLayer(layerGroupOfClusters);//remove controls
@@ -105,7 +111,7 @@ require([
 			dataProcessor.processPoint(
 				row.wktComps[0].x, row.wktComps[0].y, 
 				row.radius, colorService.getColorHex(row.clusterId), overlay, 
-				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload))
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, row.start, row.end, row.clusterId, row.payload, row.label))
 			)
 		}
 		
@@ -113,7 +119,7 @@ require([
 			dataProcessor.processPoint(
 				row.wktComps[0].x, row.wktComps[0].y, 
 				row.radius, colorService.getColorHex(row.clusterId), overlay, 
-				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, "", row.clusterId, row.payload))
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, row.start, row.end, row.clusterId, row.payload))
 			)
 		}
 
@@ -141,13 +147,47 @@ require([
 				overlay, popupService.getPopupContentForAnalyzed(row)
 			);
 		}
+		
+		var onRectangle = function(row, overlay, colorId) {
+			var bounds = [[row[0], row[1]], [row[2], row[3]]];
+			dataProcessor.processRectangle(
+				bounds,
+				colorService.getColorHex(colorId ? colorId : 0), 
+				overlay, popupService.getPopupContentForRectangle(utils.getRectDataObj(utils.getOverlayName(colorId), bounds[0], bounds[1]))
+			);
+		}
 
 		var processDataFromFile = function(fileName, data) {
-			if (utils.isFileNameStartsWith(fileName, "analyzed-")) {
-				processData(data, parserService.parseAnalyzedRow, onPointAnalyzed, onLineStringAnalyzed, onPolygonAnalyzed);
-			} else {
+			var processInner = function() {
+				if (utils.isFileNameStartsWith(utils.getFileName(fileName), "partitions_")) {
+					processPartitions(data, parserService.parsePointsRow)
+					return;
+				}
+				if (utils.getFileFolder(fileName) === "analyzed") {
+					processData(data, parserService.parseAnalyzedRow, onPointAnalyzed, onLineStringAnalyzed, onPolygonAnalyzed);
+					return;
+				}
 				processData(data, parserService.parseRow, onPoint, onLineString, function(row, overlay) {});
 			}
+			setTimeout(processInner, 0);
+		}
+		
+		var processPartitions = function(data, parseFunc) {
+			var colorId = 0;
+			var separator = ",";
+			data.forEach(function(item) {
+				var row = parseFunc(item, separator);
+				var overlay = Overlays.getOverlay(utils.getOverlayName(colorId));
+				if (!overlay) {
+					overlay = Overlays.overlays[utils.getOverlayName(colorId)] = new L.LayerGroup();
+				}
+				layerGroupOfClusters.addLayer(overlay);//add to map directly to enable it right away
+				onRectangle(row, overlay, colorId);
+				colorId++;
+			});
+			//Overlays.overlays = utils.sortObjectByKey(Overlays.overlays);
+			//Overlays.addOverlaysToControl(layerControl);
+			//setLabelsColor(Overlays.overlays);
 		}
 
 		var processData = function(data, parseFunc, onPoint, onLineString, onPolygon) {
