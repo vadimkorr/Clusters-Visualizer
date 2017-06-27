@@ -116,10 +116,10 @@ require([
 		}
 		
 		var onLineString = function(row, overlay) {
-			dataProcessor.processPoint(
-				row.wktComps[0].x, row.wktComps[0].y, 
+			dataProcessor.processLineString(
+				row.wktComps, 
 				row.radius, colorService.getColorHex(row.clusterId), overlay, 
-				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, row.start, row.end, row.clusterId, row.payload))
+				popupService.getPopupContent(utils.getItemDataObj(row.id, row.wktComps[0].x, row.wktComps[0].y, row.radius, row.start, row.end, row.clusterId, row.payload, row.label))
 			)
 		}
 

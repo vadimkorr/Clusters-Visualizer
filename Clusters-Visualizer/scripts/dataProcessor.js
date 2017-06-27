@@ -1,5 +1,5 @@
 define(function() {
-	var opacity = 0.59
+	var opacity = 0.7
     return {
         L: undefined,
         setL: function(L) {
@@ -16,7 +16,7 @@ define(function() {
             .addTo(overlay)
             .bindPopup(popupContent);
         },
-        processLineString: function(coordsColl, color, radius, overlay, popupContent) {
+        processLineString: function(coordsColl, radius, color, overlay, popupContent) {
             var coordsArr = [];
             coordsColl.forEach((coords) => {
                 coordsArr.push(new this.L.LatLng(coords.x, coords.y));
