@@ -20,8 +20,8 @@ require([
 		});
 
 		var map = L.map('map', {
-			center: [40.0, 0.5],
-			zoom: 5,
+			center: [50.675001, 10.888962],
+			zoom: 8,
 			layers: [mapbox]
 		});
 

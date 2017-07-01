@@ -5,8 +5,9 @@ define(function() {
         setL: function(L) {
             this.L = L;
         },
+        //input as x(Lng), y(Lat)
         processPoint: function(x, y, radius, color, overlay, popupContent) {
-            this.L.circle([x, y], {
+            this.L.circle([y, x], {//Lat, Lng
 				stroke: false,
                 //color: color, //stroke's color
                 fillColor: color,
@@ -19,7 +20,7 @@ define(function() {
         processLineString: function(coordsColl, radius, color, overlay, popupContent) {
             var coordsArr = [];
             coordsColl.forEach((coords) => {
-                coordsArr.push(new this.L.LatLng(coords.x, coords.y));
+                coordsArr.push(new this.L.LatLng(coords.y, coords.x));
             });
             this.L.corridor(coordsArr, {
                 color: color,
@@ -32,7 +33,7 @@ define(function() {
         processPolygon: function(coordsColl, color, overlay, popupContent) {
             var coordsArr = [];
             coordsColl.forEach((coords) => {
-                coordsArr.push([coords.x, coords.y]);
+                coordsArr.push([coords.y, coords.x]);
             });
             this.L.polygon(coordsArr, {
                 color: color,

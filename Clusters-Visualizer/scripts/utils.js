@@ -13,7 +13,7 @@ define(["scripts/consts"], function(consts) {
             return fileName.startsWith(suffix);
         },
         getGMTDate: function(str) {
-            return (new Date(parseFloat(str, 10))).toGMTString();
+            return (new Date(parseFloat(str, 10))).toLocaleString();
         },
         getClusterName: function(clusterId) {
             return "Cluster " + this.completeTemplate(consts.CLUSTER_ID_TEMPLATE, clusterId, "right");
