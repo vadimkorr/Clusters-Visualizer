@@ -1,4 +1,4 @@
-define(function() {
+define(["wicket"], function(Wkt) {
     return {
         parseRow: function(row) {
 			var arr = row.toString().split(";");

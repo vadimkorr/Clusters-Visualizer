@@ -1,15 +1,15 @@
-window.onload = function() {
-
-require([
-		"scripts/dataProcessor", 
-		"scripts/colorService", 
-		"scripts/utils",
-		"scripts/parserService",
-		"scripts/popupService",
-		"scripts/consts"
+ define("index",
+ 	[
+		"jquery",
+		"leaflet",
+		"processorService", 
+		"colorService", 
+		"utils",
+		"parserService",
+		"popupService",
+		"consts"
 	], 
-	function(dataProcessor, colorService, utils, parserService, popupService, consts) {
-
+	function($, L, dataProcessor, colorService, utils, parserService, popupService, consts) {
 		dataProcessor.setL(L);
 
 		var layerGroupOfClusters = new L.LayerGroup();
@@ -50,24 +50,33 @@ require([
 				});
 			});
 		}
+
+		$("#refresh-btn").click(function() {
+			var file = $("#file-names-list-dropdown").val();
+			refresh(file);
+		});
 			
 		$("#file-names-list-dropdown").change(function(data) {		
 			var file = $(this).val();
+			refresh(file);
+		});
 
-			var partitionsFile = utils.getPartitionsFileName(file);//"server-data/partitions-double_eps.csv";
+		var refresh = function(fileName) {
+			//try to get file with partitions
+			var partitionsFile = utils.getPartitionsFileName(fileName);//"server-data/partitions-double_eps.csv";
 			utils.getData(partitionsFile, function(data) {	
 				processDataFromFile(partitionsFile, data);
 			});
 			
-			utils.getData(file, function(data) {
+			utils.getData(fileName, function(data) {
 				layerGroupOfClusters.clearLayers();//remove cluster layers from layerGroupOfClusters
 				layerControl.removeLayer(layerGroupOfClusters);//remove controls
 				Overlays.removeOverlaysFromControl(layerControl);//
 				Overlays.removeAllKeys();
 				
-				processDataFromFile(file, data);
+				processDataFromFile(fileName, data);
 			});
-		});
+		}
 
 		var setLabelsColor = function(overlays) {
 			var self = this;
@@ -149,7 +158,7 @@ require([
 		}
 		
 		var onRectangle = function(row, overlay, colorId) {
-			var bounds = [[row[0], row[1]], [row[2], row[3]]];
+			var bounds = [[row[1], row[0]], [row[3], row[2]]];
 			dataProcessor.processRectangle(
 				bounds,
 				colorService.getColorHex(colorId ? colorId : 0), 
@@ -218,5 +227,5 @@ require([
 		}
 
 		populateFilesListDropdown();
-	})
-}
+	}
+)

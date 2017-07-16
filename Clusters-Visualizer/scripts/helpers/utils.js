@@ -1,4 +1,4 @@
-define(["scripts/consts"], function(consts) {
+define(["consts", "jquery", "jquery.csv"], function(consts, $) {
     return {
         //pos = "left" (paste num on the left hand side, so complete value is in the right side) / "right"
 		completeTemplate: function(template, num, pos) {

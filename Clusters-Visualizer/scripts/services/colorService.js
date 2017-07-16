@@ -1,4 +1,4 @@
-define(["scripts/utils"], function(utils) {
+define(["utils"], function(utils) {
 	return {
 		colorTemplate: "000000",
 		getColorHex: function(num) {  

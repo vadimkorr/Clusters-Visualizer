@@ -1,4 +1,4 @@
-define(["scripts/utils"], function(utils) {
+define(["utils"], function(utils) {
     return {
 
         getPopupContent: function(contenObj) {

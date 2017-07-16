@@ -1,4 +1,4 @@
-define(function() {
+define(["leafletCorridor"], function(L) {
 	var opacity = 0.7
     return {
         L: undefined,

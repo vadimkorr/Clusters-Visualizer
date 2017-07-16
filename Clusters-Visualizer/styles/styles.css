@@ -5,10 +5,32 @@ html, body, #map {
   padding: 0;
 }
 
-#file-names-list-dropdown {
+#custom-panel {
 	z-index: 500;
 	position: absolute;
-	margin-left: 50px;
+	padding-left: 50px;
+	margin-top: 10px;
+}
+
+#file-names-list-dropdown {
+
+
+}
+
+#refresh-btn {
+	background-color: #265cce;
+    border-radius: 10px;
+    border-width: 0px;
+    width: 70px;
+    height: 25px;
+}
+
+#refresh-btn:hover {
+	background-color: #1e49a4;
+}
+
+#refresh-btn:active {
+	background-color: #132e67;
 }
 
 .leaflet-popup {
@@ -21,6 +43,8 @@ html, body, #map {
 .wide-table {
 	width: 140px;
 }
+
+/* Overriding leaflet's classes */
 
 .leaflet-popup-content-wrapper .leaflet-popup-tip {
 	background-color: white;
