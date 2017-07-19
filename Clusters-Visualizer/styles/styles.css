@@ -13,8 +13,29 @@ html, body, #map {
 }
 
 #file-names-list-dropdown {
+	
+}
+
+#notification-panel-outer {
+    box-sizing: border-box;
+    z-index: 500;
+    position: absolute;
+    padding: 5px;
+    /*background-color: greenyellow;*/
+    width: 250px;
+    height: 200px;
+    bottom: 0;
+	
+	display: flex;
+}
+
+#notification-panel {
 
 
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    width: 100%;
 }
 
 #refresh-btn {

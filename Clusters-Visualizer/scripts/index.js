@@ -7,10 +7,16 @@
 		"utils",
 		"parserService",
 		"popupService",
-		"consts"
+		"consts",
+		"moduleNotification"
 	], 
 	function($, L, dataProcessor, colorService, utils, parserService, popupService, consts) {
 		dataProcessor.setL(L);
+
+        var mnModule = new MNModule({
+			container: "#notification-panel",
+			direction: "fromBottom"
+		});
 
 		var layerGroupOfClusters = new L.LayerGroup();
 		var mapbox = L.tileLayer(consts.LEAFLET_TILE_LAYER, {
@@ -170,18 +176,40 @@
 			var processInner = function() {
 				if (utils.isFileNameStartsWith(utils.getFileName(fileName), "partitions_")) {
 					processPartitions(data, parserService.parsePointsRow)
+					  .then(function() {
+					    mnModule.pushNotif({
+						  type: "success",
+					      message: "Partitions file was processed",
+                          closeCond: 2000
+						});	  
+					  });
 					return;
 				}
 				if (utils.getFileFolder(fileName) === "analyzed") {
-					processData(data, parserService.parseAnalyzedRow, onPointAnalyzed, onLineStringAnalyzed, onPolygonAnalyzed);
+					processData(data, parserService.parseAnalyzedRow, onPointAnalyzed, onLineStringAnalyzed, onPolygonAnalyzed)
+					  .then(function() {
+					    mnModule.pushNotif({
+						  type: "success",
+						  message: "Analyzed file was processed",
+					      closeCond: 2000
+						});	
+					  });
 					return;
 				}
-				processData(data, parserService.parseRow, onPoint, onLineString, function(row, overlay) {});
+				processData(data, parserService.parseRow, onPoint, onLineString, function(row, overlay) {})
+				  .then(function() {
+				    mnModule.pushNotif({
+					  type: "success",
+					  message: "File was processed",
+					  closeCond: 2000
+					});	
+				  });
 			}
 			setTimeout(processInner, 0);
 		}
 		
 		var processPartitions = function(data, parseFunc) {
+		  return new Promise(function(resolve, reject) {
 			var colorId = 0;
 			var separator = ",";
 			data.forEach(function(item) {
@@ -197,10 +225,13 @@
 			//Overlays.overlays = utils.sortObjectByKey(Overlays.overlays);
 			//Overlays.addOverlaysToControl(layerControl);
 			//setLabelsColor(Overlays.overlays);
+			resolve();
+		  });
 		}
 
 		var processData = function(data, parseFunc, onPoint, onLineString, onPolygon) {
-			data.forEach(function(item) {
+			return new Promise(function(resolve, reject) {
+			  data.forEach(function(item) {
 				var row = parseFunc(item);
 				var overlay = Overlays.getOverlay(utils.getClusterName(row.clusterId));
 				if (!overlay) {
@@ -220,10 +251,12 @@
 					default:
 						break;
 				}
+			  });
+			  Overlays.overlays = utils.sortObjectByKey(Overlays.overlays);
+			  Overlays.addOverlaysToControl(layerControl);
+			  setLabelsColor(Overlays.overlays);
+			  resolve();
 			});
-			Overlays.overlays = utils.sortObjectByKey(Overlays.overlays);
-			Overlays.addOverlaysToControl(layerControl);
-			setLabelsColor(Overlays.overlays);
 		}
 
 		populateFilesListDropdown();
