@@ -8,7 +8,7 @@ requirejs.config({
         "wicketLeaflet": "../node_modules/wicket/wicket-leaflet",
 
         "leafletCorridor": "./libs/leaflet-corridor",
-        "moduleNotification": "./libs/module-notification",
+        "moduleNotification": "../node_modules/module-notification/js/module-notification",
 
         "colorService": "./services/colorService",
         "processorService": "./services/processorService",
